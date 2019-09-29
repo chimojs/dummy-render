@@ -1,0 +1,15 @@
+Texture2D colorMap_ : register( t0 );
+SamplerState colorSampler_ : register( s0 );
+
+struct PS_Input
+{
+float4 pos : SV_POSITION;
+float2 tex0 : TEXCOORD0;
+};
+
+float4 PS_Main( PS_Input frag ) : SV_TARGET
+{
+	float4 color = colorMap_.Sample( colorSampler_, frag.tex0 );
+	return float4(color.b, color.g, color.r, 1.0);
+	//return color;
+}
