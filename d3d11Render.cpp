@@ -1,6 +1,11 @@
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include <DirectXMath.h>
+#include <stdlib.h>
+#include <time.h>
+
+#pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "d3dcompiler.lib")
 
 #define MYD3DWINDOWCLASS L"MyD3DWindowClass"
 #define MYD3DWINDOWNAME L"MyD3DWindowName"
@@ -12,12 +17,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
     switch (Msg)
     {
     case WM_PAINT:
-        {
-            PAINTSTRUCT ps;
-            BeginPaint(hWnd, &ps);
-            EndPaint(hWnd, &ps);
-        }
-        break;
+    {
+        PAINTSTRUCT ps;
+        BeginPaint(hWnd, &ps);
+        EndPaint(hWnd, &ps);
+    }
+    break;
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
@@ -84,17 +89,19 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
 
     DXGI_SWAP_CHAIN_DESC swapChainDesc;
     ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
-    swapChainDesc.BufferCount = 1;
+    swapChainDesc.BufferCount = 2;
     swapChainDesc.BufferDesc.Width = width;
     swapChainDesc.BufferDesc.Height = height;
-    swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    //swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    swapChainDesc.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
     swapChainDesc.BufferDesc.RefreshRate.Numerator = 60;
     swapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
     swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     swapChainDesc.OutputWindow = hwnd;
     swapChainDesc.Windowed = true;
-    swapChainDesc.SampleDesc.Count = 4;
+    swapChainDesc.SampleDesc.Count = 1;
     swapChainDesc.SampleDesc.Quality = 0;
+    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 
     ID3D11Device* d3dDevice_;
     ID3D11DeviceContext* d3dContext_;
@@ -173,7 +180,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
 
     if (vsErrMsg) vsErrMsg->Release();
 
-    ID3D11VertexShader *pVertexShader;
+    ID3D11VertexShader* pVertexShader;
     result = d3dDevice_->CreateVertexShader(vsBuffer->GetBufferPointer(),
         vsBuffer->GetBufferSize(), 0, &pVertexShader);
     if (FAILED(result))
@@ -192,7 +199,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
     };
 
     unsigned int totalLayoutElements = ARRAYSIZE(solidColorLayout);
-    ID3D11InputLayout *pInputLayout;
+    ID3D11InputLayout* pInputLayout;
     result = d3dDevice_->CreateInputLayout(solidColorLayout,
         totalLayoutElements, vsBuffer->GetBufferPointer(),
         vsBuffer->GetBufferSize(), &pInputLayout);
@@ -217,7 +224,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
 
     if (vsErrMsg) vsErrMsg->Release();
 
-    ID3D11PixelShader *pPixelShader;
+    ID3D11PixelShader* pPixelShader;
     result = d3dDevice_->CreatePixelShader(psBuffer->GetBufferPointer(),
         psBuffer->GetBufferSize(), 0, &pPixelShader);
     psBuffer->Release();
@@ -250,7 +257,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
     ZeroMemory(&resourceData, sizeof(resourceData));
     resourceData.pSysMem = vertices;
 
-    ID3D11Buffer *pBuffer;
+    ID3D11Buffer* pBuffer;
     result = d3dDevice_->CreateBuffer(&vertexDesc,
         &resourceData, &pBuffer);
     if (FAILED(result))
@@ -269,26 +276,14 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
     desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
     desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
     desc.MiscFlags = 0;
-    ID3D11Texture2D *pTexture;
-
-    DWORD numberOfBytesRead = 0;
-
-    int nNumberOfBytesToRead = 600 * 600 * 4;
-    void* pSrcData = malloc(nNumberOfBytesToRead);
-    HANDLE  hVideo = CreateFile(L"raw_v", GENERIC_READ, FILE_SHARE_READ, NULL,
-        OPEN_EXISTING, FILE_ATTRIBUTE_READONLY | FILE_FLAG_SEQUENTIAL_SCAN, NULL);
-    ReadFile(hVideo, pSrcData, nNumberOfBytesToRead, &numberOfBytesRead, NULL);
-    D3D11_SUBRESOURCE_DATA data = {0};
-    data.pSysMem = pSrcData;
-    data.SysMemPitch = 600 * 4;
-
+    ID3D11Texture2D* pTexture;
     result = d3dDevice_->CreateTexture2D(&desc, NULL, &pTexture);
     if (FAILED(result))
     {
         return false;
     }
 
-    ID3D11ShaderResourceView *pSRView;
+    ID3D11ShaderResourceView* pSRView;
     result = d3dDevice_->CreateShaderResourceView(pTexture, 0, &pSRView);
 
     D3D11_SAMPLER_DESC colorMapDesc;
@@ -299,7 +294,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
     colorMapDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
     colorMapDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
     colorMapDesc.MaxLOD = D3D11_FLOAT32_MAX;
-    ID3D11SamplerState *pSamplerState;
+    ID3D11SamplerState* pSamplerState;
     result = d3dDevice_->CreateSamplerState(&colorMapDesc,
         &pSamplerState);
     if (FAILED(result))
@@ -307,7 +302,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
         return false;
     }
 
-
+    srand((unsigned)time(NULL));
     MSG msg = { 0 };
     while (msg.message != WM_QUIT)
     {
@@ -319,22 +314,41 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
         else
         {
             //Normal render and update
-            float clearColor[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
+            float clearColor[4] = { 0.0f, 0.0f, 1.0f, 1.0f };
             d3dContext_->ClearRenderTargetView(backBufferTarget_, clearColor);
+            Sleep(20);
+            d3dContext_->OMSetRenderTargets(1, &backBufferTarget_, 0);
 
-			ReadFile(hVideo, pSrcData, nNumberOfBytesToRead, &numberOfBytesRead, NULL);
-			Sleep(40);
             D3D11_MAPPED_SUBRESOURCE mappedResource;
             ZeroMemory(&mappedResource, sizeof(D3D11_MAPPED_SUBRESOURCE));
             result = d3dContext_->Map(pTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-			LPBYTE pRow = (LPBYTE)mappedResource.pData;
-			LPBYTE pData = (LPBYTE)pSrcData;
-			for (int i = 0; i < 600; ++i)
-			{
-				memcpy(pRow, pData, 600 * 4);
-				pRow += mappedResource.RowPitch;
-				pData += 600 * 4;
-			}
+            LPBYTE pRow = (LPBYTE)mappedResource.pData;
+#define RED 0xFF
+#define GREEN 0xFF00
+#define BLUE 0xFF0000
+            int mode[3] = { RED, GREEN, BLUE };
+            int cur = 0;
+            int init = 2;
+            static int a = 0;
+            int g[5] = { 15, 20, 30, 60 };
+            int r = rand() % 4;
+            for (int i = 0; i < 600; ++i)
+            {
+                int t = g[r];
+                if (i % t == 0)
+                {
+                    init = (++init) % 3;
+                }
+
+                unsigned int* pCur;
+                for (int j = 0; j < 600; ++j)
+                {
+                    pCur = (unsigned int*)(pRow + j * 4);
+                    cur = (j / t) % 3;
+                    *pCur = mode[(cur + init) % 3];
+                }
+                pRow += mappedResource.RowPitch;
+            }
             d3dContext_->Unmap(pTexture, 0);
 
             unsigned int stride = sizeof(VertexPos);
@@ -358,15 +372,13 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance,
     if (swapChain_) swapChain_->Release();
     if (d3dContext_) d3dContext_->Release();
     if (d3dDevice_) d3dDevice_->Release();
-	if (pPixelShader) pPixelShader->Release();
-	if (pInputLayout) pInputLayout->Release();
-	if (pVertexShader) pVertexShader->Release();
-	if (pBuffer) pBuffer->Release();
-	if (pTexture) pTexture->Release();
-	if (pSRView) pSRView->Release();
-	if (pSamplerState) pSamplerState->Release();
+    if (pPixelShader) pPixelShader->Release();
+    if (pInputLayout) pInputLayout->Release();
+    if (pVertexShader) pVertexShader->Release();
+    if (pBuffer) pBuffer->Release();
+    if (pTexture) pTexture->Release();
+    if (pSRView) pSRView->Release();
+    if (pSamplerState) pSamplerState->Release();
 
-    free(pSrcData);
-    CloseHandle(hVideo);
     return msg.wParam;
 }
